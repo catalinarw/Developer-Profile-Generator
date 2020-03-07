@@ -77,23 +77,23 @@ const writeResume = async (user, favColor, stars) => {
 			if (template.indexOf('{location}') < 0) {
 				foundLocation = false
 			} else {
-				template = template.replace('{location}', user.location) // Try regex
+				template = template.replace('{location}', user.location) 
 			}
 
 			if (template.indexOf('{colors}') < 0) {
 				foundColors = false
 			} else {
-				template = template.replace('{colors}', favColor) // Try regex
+				template = template.replace('{colors}', favColor) 
 			}
 		}
-
 		template = template.replace('{bio}', user.bio)
 		template = template.replace('{repos}', user.public_repos)
 		template = template.replace('{followers}', user.followers)
 		template = template.replace('{following}', user.following)
 		template = template.replace('{avatar}', user.avatar_url)
-		template = template.replace('{stars}', stars) //number of repost starred is length of object
-		console.log(template)
+		template = template.replace('{stars}', stars) 
+
+	
 
 		writePDF('./resume.pdf', template)
 		writeFile('./resume.html', template)
