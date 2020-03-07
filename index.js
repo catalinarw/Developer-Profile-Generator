@@ -1,47 +1,115 @@
+//Requiring Dependencies 
+const fs = require('fs')
+const inquirer = require('inquirer')
+const axios = require('axios')
+var pdf = require('html-pdf')
 
-var fs = require("fs");
-var inquirer = require("inquirer");
-// const axios = require("axios");
-
-// code to prompt to user questions
-const questions = [
-    {
-        type: "input",
-        message: "Please type your Github username",
-        name: "username"
-    },
-    {
-        type: "list",
-        message: "what is your favorite color?",
-        name: "favorite color",
-        choices: ["green", "blue", "pink", "red"]
-    }
-  
-];
-// function to take inout from user and use it to get back info from 
 inquirer
-  inquirer.prompt(questions).then(answers => {
-    // Use user feedback for... whatever!!
-    console.log(answers);
-  });
-
-
-// async function getUsername() {
-   
-//     const { username } = await inquirer.prompt(questions);
-
-//     const response = await axios.get("https://api.github.com/users/${username}");
-
-
-// }
-
+// Questions that prompt the user for input
+	.prompt([
+		{
+			type: 'input',
+			message: 'Please Enter Your GitHub Username',
+			name: 'username'
+		},
+		{
+			type: 'list',
+			message: 'What is your favorite color?',
+			name: 'colors',
+			choices: ['green', 'blue', 'pink', 'red']
+		}
+	])
+	.then(function(res) {
+		// store the users answers in variables
+		username = res.username
+		colors = res.colors
+		const queryUrl = `https://api.github.com/users/${username}`
+		// function makes seperate api call for users star count 
+		starCount(username)
+		// make the api call then use the data to pass into the writeResume function
+		axios.get(queryUrl).then(function(res) { 
+			writeResume(res.data, colors, stars)
+		})
+	})
 // create PDF document function
-// edit pdf document
-// function writeToFile(fileName, data) {
- 
-// }
+const writePDF = (filePath, html) =>
+	pdf.create(html, { format: 'Letter' }).toFile(filePath, function(err, res) {
+		if (err) return console.log(err)
+		console.log(res) 
+	})
+// reads file data
+const readFile = (file, encoding) =>
+	new Promise(function(resolve, reject) {
+		fs.readFile(file, encoding, function(err, data) {
+			if (err) {
+				return reject(err)
+			}
 
-// function init() {
+			resolve(data)
+		})
+	})
+// writes a file or writes over an existing file
+const writeFile = (file, data) =>
+	new Promise(function(resolve, reject) {
+		fs.writeFile(file, data, function(err) {
+			if (err) {
+				return reject(err)
+			}
+			resolve('Success')
+		})
+	})
 
-// init();
-// }
+// function that takes in the user data and inserts the data into a template
+const writeResume = async (user, favColor, stars) => {
+	try {
+		// reading the template.html file and saving its data in a variable 
+		let template = await readFile('./generate.html', 'utf8')
+// replaces parts of the document with user specific data
+		template = template.replace('{name}', user.name)
+		template = template.replace('{company}', user.company)
+		template = template.replace('{blog}', user.blog)
+		template = template.replace('{profile}', user.html_url)
+		
+
+		let foundLocation = true,
+			foundColors = true
+		while (foundLocation || foundColors) {
+			if (template.indexOf('{location}') < 0) {
+				foundLocation = false
+			} else {
+				template = template.replace('{location}', user.location) // Try regex
+			}
+
+			if (template.indexOf('{colors}') < 0) {
+				foundColors = false
+			} else {
+				template = template.replace('{colors}', favColor) // Try regex
+			}
+		}
+
+		template = template.replace('{bio}', user.bio)
+		template = template.replace('{repos}', user.public_repos)
+		template = template.replace('{followers}', user.followers)
+		template = template.replace('{following}', user.following)
+		template = template.replace('{avatar}', user.avatar_url)
+		template = template.replace('{stars}', stars) //number of repost starred is length of object
+		console.log(template)
+
+		writePDF('./resume.pdf', template)
+		writeFile('./resume.html', template)
+	} catch (error) {
+		console.log(error)
+	}
+}
+
+let username = ''
+let colors = ''
+let stars = ''
+function starCount(username) {
+	const queryUrl2 = `https://api.github.com/users/${username}/starred`
+	axios.get(queryUrl2).then(function(res) {
+		console.log('starred', res.data.length)
+		stars = res.data.length
+	})
+	return stars
+}
